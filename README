@@ -1,1 +1,4 @@
-Initial stuff!
+This is some various code used to control LEDs attached by various methods.
+
+cube8: AVR-code for an 8x8x8 monochrome LED cube (http://www.youtube.com/watch?v=6mXM-oGggrM)
+cube_pc: PC-code for the same 8x8x8 cube, controlled via RS232 from a computer.
