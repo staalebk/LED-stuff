@@ -314,7 +314,8 @@ int main(int argc, char **argv)
   confthread.threadid = 0;
   confthread.port = baseport;
   confthread.striplen = striplen;
-  pthread_create(&ptc, NULL, sendthrd, (void *)&confthread);
+  confthread.running = 1;
+  pthread_create(&ptc, NULL, confthrd, (void *)&confthread);
   printf("Current stream: %d\n", controller.current);
   struct timeval now;
   gettimeofday(&now, NULL);
@@ -325,11 +326,9 @@ int main(int argc, char **argv)
     int shouldChange = 0;
     gettimeofday(&now, NULL);
     pthread_mutex_lock(&lock);
-/*
     printf("nowi      : %ld\n", now.tv_sec);
     printf("lastchange: %ld\n", controller.lastchange.tv_sec);
     printf("lastseen  : %ld\n", recvthread[controller.current].lastseen.tv_sec);
-*/
     if(now.tv_sec - controller.lastchange.tv_sec > timeout)
     {
       printf("We can change source!\n");
@@ -347,13 +346,15 @@ int main(int argc, char **argv)
       {
         if(recvthread[controller.current].lastseen.tv_sec < recvthread[i].lastseen.tv_sec)
         {
+          printf("DING! changing to %d %ld\n", i, recvthread[i].lastseen.tv_sec);
           controller.current = i;
           controller.lastchange = now;
         }
       }
     }
-    if(canChange && now.tv_sec - recvthread[1].lastseen.tv_sec > 1)
+    if(canChange && (now.tv_sec - recvthread[1].lastseen.tv_sec) < 1)
     {
+      printf("MANUAL! changing to %d %ld\n", 1, recvthread[1].lastseen.tv_sec);
       controller.current = 1;
       controller.lastchange = now;
     }
