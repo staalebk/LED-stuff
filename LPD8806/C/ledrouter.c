@@ -36,11 +36,14 @@ typedef struct {
     struct timeval lastchange;
 } controller_s;
 
-thread_s recvthread[MAXPORT];
-sender_s sendthread[MAXPORT];
-controller_s controller;
+volatile thread_s recvthread[MAXPORT];
+volatile thread_s confthread;
+volatile sender_s sendthread[MAXPORT];
+volatile controller_s controller;
+volatile int timeout;
 pthread_t pt[MAXPORT];
 pthread_t pts[MAXPORT];
+pthread_t ptc;
 pthread_mutex_t lock;
 pthread_cond_t ready = PTHREAD_COND_INITIALIZER;
 
@@ -108,6 +111,85 @@ void *sendthrd(void *arg)
     }
     printf("Sending thread %d sent %d bytes to %s:%d!\n", s->threadid, numbytes, s->host, s->port);
   }
+  pthread_exit((void*) 0);
+}
+
+void *confthrd(void *arg)
+{
+  thread_s *t;
+  t = (thread_s *)arg;
+  printf("Starting config thread %d, listening on port %d\n", t->threadid, t->port);
+  int sockfd;
+  struct addrinfo hints, *servinfo, *p;
+  int rv;
+  int numbytes;
+  struct sockaddr_storage their_addr;
+  char *buf;
+  buf = malloc(t->striplen*3);
+  char port[10];
+  sprintf(port, "%d", t->port);
+  socklen_t addr_len;
+  char s[INET6_ADDRSTRLEN];
+  memset(&hints, 0, sizeof hints);
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_DGRAM;
+  hints.ai_flags = AI_PASSIVE;
+  
+  if((rv = getaddrinfo(NULL, port, &hints, &servinfo)) != 0)
+  {
+    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+    pthread_exit((void*) 1);
+  }
+  for(p = servinfo; p != NULL; p = p->ai_next) {
+      if ((sockfd = socket(p->ai_family, p->ai_socktype,
+                           p->ai_protocol)) == -1) {
+          perror("listener: socket");
+          continue;
+      }
+      if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1)
+      {
+        close(sockfd);
+        perror("listener: bind");
+        continue;
+      }
+      break;
+  }
+  freeaddrinfo(servinfo);
+  printf("Thread: %d - Waiting for connections\n", t->threadid);
+  addr_len = sizeof their_addr;
+  while(t->running)
+  {
+    numbytes = recvfrom(sockfd, buf, t->striplen*3, 0, (struct sockaddr *)&their_addr, &addr_len);
+    if(numbytes == -1)
+    {
+      perror("recvfrom");
+      pthread_exit((void*)3);
+    }
+    printf("Config %d: Got packet (%d bytes) from %s\n", t->threadid, numbytes,
+          inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s));
+    if(numbytes == 1)
+    {
+      struct timeval now;
+      gettimeofday(&now, NULL);
+      pthread_mutex_lock(&lock);
+      if(now.tv_sec - controller.lastchange.tv_sec > timeout)
+      {
+        printf("Config: Changing channel to %d\n", buf[0]);
+        controller.current = buf[0];
+        controller.lastchange = now;
+      }
+      else
+      { 
+        printf("Config: NOT Changing channel to %d... zapping not allowed!\n", buf[0]);
+      }
+      pthread_mutex_unlock(&lock);
+    }
+    else
+    {
+      printf("Configthread %d: Packet has wrong length, ignoring\n", t->threadid);
+    }
+  }
+  printf("Thread %d is shutting down!\n", t->threadid);
   pthread_exit((void*) 0);
 }
 
@@ -182,7 +264,7 @@ void *recvthrd(void *arg)
 
 int main(int argc, char **argv)
 {
-  int timeout  = 5;
+  timeout  = 5;
   int baseport;
   int destport;
   int striplen;
@@ -192,8 +274,8 @@ int main(int argc, char **argv)
     showUsage(argv[0]);
   baseport = atoi(argv[1]);
   destip = argv[2];
-  destport = atoi(argv[4]);
-  striplen = atoi(argv[3]);
+  destport = atoi(argv[3]);
+  striplen = atoi(argv[4]);
   if(baseport == 0 || destport == 0 || striplen == 0)
     showUsage(argv[0]);
   if(argc == 6)
@@ -228,14 +310,26 @@ int main(int argc, char **argv)
     sendthread[i].length = striplen; 
     pthread_create(&pts[i], NULL, sendthrd, (void *)&sendthread[i]);
   }
+  // Config thread
+  confthread.threadid = 0;
+  confthread.port = baseport;
+  confthread.striplen = striplen;
+  pthread_create(&ptc, NULL, sendthrd, (void *)&confthread);
   printf("Current stream: %d\n", controller.current);
+  struct timeval now;
+  gettimeofday(&now, NULL);
+  controller.lastchange = now;
   while(1)
   {
     int canChange = 0;
     int shouldChange = 0;
-    struct timeval now;
     gettimeofday(&now, NULL);
     pthread_mutex_lock(&lock);
+/*
+    printf("nowi      : %ld\n", now.tv_sec);
+    printf("lastchange: %ld\n", controller.lastchange.tv_sec);
+    printf("lastseen  : %ld\n", recvthread[controller.current].lastseen.tv_sec);
+*/
     if(now.tv_sec - controller.lastchange.tv_sec > timeout)
     {
       printf("We can change source!\n");
@@ -243,7 +337,7 @@ int main(int argc, char **argv)
     }
     if(now.tv_sec - recvthread[controller.current].lastseen.tv_sec > timeout)
     {
-      printf("We should change source!\n");
+      printf("We should change source! %ld %ld\n", now.tv_sec, recvthread[controller.current].lastseen.tv_sec);
       shouldChange = 1;
     }
     if(shouldChange && canChange)
@@ -251,17 +345,23 @@ int main(int argc, char **argv)
       // Find new source.
       for(i = 0; i < MAXPORT; i++)
       {
-        if(recvthread[controller.current].lastseen.tv_sec > recvthread[i].lastseen.tv_sec)
+        if(recvthread[controller.current].lastseen.tv_sec < recvthread[i].lastseen.tv_sec)
         {
           controller.current = i;
           controller.lastchange = now;
         }
       }
     }
+    if(canChange && now.tv_sec - recvthread[1].lastseen.tv_sec > 1)
+    {
+      controller.current = 1;
+      controller.lastchange = now;
+    }
     printf("Current stream: %d\n", controller.current);
+    memcpy(sendthread[0].buffer, recvthread[controller.current].buffer, striplen*3);
     pthread_cond_broadcast(&ready);
     pthread_mutex_unlock(&lock);
-    sleep(1);
+    usleep(20000);
   }
   for(i = 0; i < MAXPORT; i++)
   {
