@@ -32,8 +32,10 @@ typedef struct {
 
 typedef struct {
     int current;
+    int random;
     int port;
     struct timeval lastchange;
+    struct timeval randomsince;
 } controller_s;
 
 volatile thread_s recvthread[MAXPORT];
@@ -49,7 +51,7 @@ pthread_cond_t ready = PTHREAD_COND_INITIALIZER;
 
 void showUsage(char *name)
 {
-    printf("%s base-port dest-ip dest-port strip-len [timeout]\n", name);
+    printf("%s base-port strip-len dest-ip dest-port dest-len [dest-ip dest-port dest-len [dest-ip dest-port dest-len]]\n", name);
     exit(1);
 }
 
@@ -79,6 +81,7 @@ void *sendthrd(void *arg)
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_DGRAM;
   rv = getaddrinfo(s->host, port, &hints, &servinfo);
+  int count = 0;
   if (rv != 0)
   {
     fprintf(stderr, "getaddrinfo %s\n", gai_strerror(rv));
@@ -99,6 +102,7 @@ void *sendthrd(void *arg)
   }
   while(1)
   {
+    count++;
     pthread_mutex_lock(&lock);
     pthread_cond_wait(&ready, &lock);
     memcpy(buffer, s->buffer, s->length*3);
@@ -109,7 +113,8 @@ void *sendthrd(void *arg)
       perror("sendto");
       pthread_exit((void*) 2);
     }
-    printf("Sending thread %d sent %d bytes to %s:%d!\n", s->threadid, numbytes, s->host, s->port);
+    if(!(count%50))
+      printf("Sending thread %d sent %d bytes to %s:%d!\n", s->threadid, numbytes, s->host, s->port);
   }
   pthread_exit((void*) 0);
 }
@@ -175,8 +180,18 @@ void *confthrd(void *arg)
       if(now.tv_sec - controller.lastchange.tv_sec > timeout)
       {
         printf("Config: Changing channel to %d\n", buf[0]);
-        controller.current = buf[0];
-        controller.lastchange = now;
+        if(buf[0] == 100)
+        {
+          /*
+          controller.random = 1;
+          controller.randomsince = now;
+          */
+        }
+        else
+        {
+          controller.current = buf[0];
+          controller.lastchange = now;
+        }
       }
       else
       { 
@@ -213,7 +228,7 @@ void *recvthrd(void *arg)
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_DGRAM;
   hints.ai_flags = AI_PASSIVE;
-  
+  int count = 0; 
   if((rv = getaddrinfo(NULL, port, &hints, &servinfo)) != 0)
   {
     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
@@ -238,14 +253,16 @@ void *recvthrd(void *arg)
   addr_len = sizeof their_addr;
   while(t->running)
   {
+    count++;
     numbytes = recvfrom(sockfd, buf, t->striplen*3, 0, (struct sockaddr *)&their_addr, &addr_len);
     if(numbytes == -1)
     {
       perror("recvfrom");
       pthread_exit((void*)3);
     }
-    printf("Thread %d: Got packet (%d bytes) from %s\n", t->threadid, numbytes,
-          inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s));
+    if(!(count%50))
+      printf("Thread %d: Got packet (%d bytes) from %s\n", t->threadid, numbytes,
+             inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s));
     if(numbytes == t->striplen*3)
     {
       pthread_mutex_lock(&lock);
@@ -264,29 +281,40 @@ void *recvthrd(void *arg)
 
 int main(int argc, char **argv)
 {
-  timeout  = 5;
+  timeout  = 2;
   int baseport;
-  int destport;
+  int destport[3];
   int striplen;
   int i;
-  char *destip;
-  if(argc < 5)
+  int senders = 0;
+  char *destip[3];
+  int destlen[3];
+  int totdestlen = 0;
+  if(argc < 6)
     showUsage(argv[0]);
   baseport = atoi(argv[1]);
-  destip = argv[2];
-  destport = atoi(argv[3]);
-  striplen = atoi(argv[4]);
+  striplen = atoi(argv[2]);
+  for(i = 0; (3+i*3+2) < argc; i++)
+  {
+    destip[i] =        argv[3+i*3];
+    destport[i] = atoi(argv[3+i*3+1]);
+    destlen[i] =  atoi(argv[3+i*3+2]);
+    totdestlen += destlen[i];
+    senders++;
+  }
   if(baseport == 0 || destport == 0 || striplen == 0)
     showUsage(argv[0]);
-  if(argc == 6)
-    timeout = atoi(argv[5]);
-  if (timeout == 0)
-    timeout = 5;
+  if(totdestlen != striplen)
+  {
+    printf("WTF!? Length does not match up! %d != %d\n", totdestlen, striplen);
+    return 1;
+  }
   printf("\nWelcome to the LED-router!\n\n");
   printf("Strip length: %d\n", striplen);
   printf("Config port: %d\n", baseport);
   printf("Input ports: %d -> %d\n", baseport+1, baseport + MAXPORT);
-  printf("Destination: %s:%d\n", destip, destport);
+  for(i = 0; i < senders; i++)
+    printf("Destination: %s:%d\n", destip[i], destport[i]);
   printf("Timeout: %d\n", timeout);
  
   pthread_mutex_init(&lock, NULL); 
@@ -301,13 +329,13 @@ int main(int argc, char **argv)
     pthread_create(&pt[i], NULL, recvthrd, (void *)&recvthread[i]);
   }
   // Set up the sending threads!
-  for(i = 0; i < 1; i++)
+  for(i = 0; i < senders; i++)
   {
     sendthread[i].threadid = i;
-    sendthread[i].port = destport;
-    sendthread[i].host = destip;
+    sendthread[i].port = destport[i];
+    sendthread[i].host = destip[i];
     sendthread[i].buffer = malloc(striplen*3);
-    sendthread[i].length = striplen; 
+    sendthread[i].length = destlen[i]; 
     pthread_create(&pts[i], NULL, sendthrd, (void *)&sendthread[i]);
   }
   // Config thread
@@ -320,26 +348,61 @@ int main(int argc, char **argv)
   struct timeval now;
   gettimeofday(&now, NULL);
   controller.lastchange = now;
+  int count = 0;
+  int random = 0;
   while(1)
   {
     int canChange = 0;
     int shouldChange = 0;
+    count++;
     gettimeofday(&now, NULL);
     pthread_mutex_lock(&lock);
-    printf("nowi      : %ld\n", now.tv_sec);
+    /*
+    printf("now       : %ld\n", now.tv_sec);
     printf("lastchange: %ld\n", controller.lastchange.tv_sec);
     printf("lastseen  : %ld\n", recvthread[controller.current].lastseen.tv_sec);
+    */
     if(now.tv_sec - controller.lastchange.tv_sec > timeout)
     {
-      printf("We can change source!\n");
+      if(!(count%50))
+        printf("We can change source!\n");
       canChange = 1;
     }
     if(now.tv_sec - recvthread[controller.current].lastseen.tv_sec > timeout)
     {
-      printf("We should change source! %ld %ld\n", now.tv_sec, recvthread[controller.current].lastseen.tv_sec);
+      if(!(count%50))
+        printf("We should change source! %ld %ld\n", now.tv_sec, recvthread[controller.current].lastseen.tv_sec);
       shouldChange = 1;
     }
-    if(shouldChange && canChange)
+    if(canChange && controller.random)
+    {
+      int start = (controller.current+1) % MAXPORT;
+      int found = 0;
+      // Find new source.
+      for(i = start; i < MAXPORT; i++)
+      {
+        if(recvthread[controller.current].lastseen.tv_sec < recvthread[i].lastseen.tv_sec)
+        {
+          printf("DING! changing to %d %ld\n", i, recvthread[i].lastseen.tv_sec);
+          controller.current = i;
+          controller.lastchange = now;
+          found = 1;
+        }
+      }
+      if(!found)
+      for(i = 0; i < start; i++)
+      {
+        if(recvthread[controller.current].lastseen.tv_sec < recvthread[i].lastseen.tv_sec)
+        {
+          printf("DING! changing to %d %ld\n", i, recvthread[i].lastseen.tv_sec);
+          controller.current = i;
+          controller.lastchange = now;
+        }
+      }
+      random = controller.current;
+
+    }
+    else if(shouldChange && canChange)
     {
       // Find new source.
       for(i = 0; i < MAXPORT; i++)
@@ -352,14 +415,21 @@ int main(int argc, char **argv)
         }
       }
     }
-    if(canChange && (now.tv_sec - recvthread[1].lastseen.tv_sec) < 1)
+    else if(canChange && (now.tv_sec - recvthread[0].lastseen.tv_sec) < 1)
     {
-      printf("MANUAL! changing to %d %ld\n", 1, recvthread[1].lastseen.tv_sec);
-      controller.current = 1;
+      printf("MANUAL! changing to %d %ld\n", 0, recvthread[1].lastseen.tv_sec);
+      controller.current = 0;
       controller.lastchange = now;
     }
-    printf("Current stream: %d\n", controller.current);
-    memcpy(sendthread[0].buffer, recvthread[controller.current].buffer, striplen*3);
+    if(!(count%50))
+      printf("Current stream: %d\n", controller.current);
+    int start = 0;
+    for(i = 0; i < senders; i++)
+    {
+      memcpy(sendthread[i].buffer, recvthread[controller.current].buffer + start*3, sendthread[i].length*3);
+//      printf("COPYING OFFSET %d, LENGTH %d\n", start*3, sendthread[i].length*3);
+      start += sendthread[i].length;
+    }
     pthread_cond_broadcast(&ready);
     pthread_mutex_unlock(&lock);
     usleep(20000);
