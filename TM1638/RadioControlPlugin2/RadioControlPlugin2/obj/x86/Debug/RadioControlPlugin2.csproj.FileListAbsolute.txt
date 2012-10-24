@@ -1,0 +1,23 @@
+C:\Users\NiteLite\AppData\Local\Temporary Projects\RadioControlPlugin2\obj\x86\Debug\ResolveAssemblyReference.cache
+C:\Users\NiteLite\AppData\Local\Temporary Projects\RadioControlPlugin2\obj\x86\Debug\RadioControlPlugin2.Form1.resources
+C:\Users\NiteLite\AppData\Local\Temporary Projects\RadioControlPlugin2\obj\x86\Debug\RadioControlPlugin2.Properties.Resources.resources
+C:\Users\NiteLite\AppData\Local\Temporary Projects\RadioControlPlugin2\obj\x86\Debug\GenerateResource.read.1.tlog
+C:\Users\NiteLite\AppData\Local\Temporary Projects\RadioControlPlugin2\obj\x86\Debug\GenerateResource.write.1.tlog
+C:\Users\NiteLite\AppData\Local\Temporary Projects\RadioControlPlugin2\bin\Debug\RadioControlPlugin2.exe
+C:\Users\NiteLite\AppData\Local\Temporary Projects\RadioControlPlugin2\bin\Debug\RadioControlPlugin2.pdb
+C:\Users\NiteLite\AppData\Local\Temporary Projects\RadioControlPlugin2\obj\x86\Debug\RadioControlPlugin2.exe
+C:\Users\NiteLite\AppData\Local\Temporary Projects\RadioControlPlugin2\obj\x86\Debug\RadioControlPlugin2.pdb
+C:\Users\NiteLite\documents\visual studio 2010\Projects\RadioControlPlugin2\RadioControlPlugin2\obj\x86\Debug\RadioControlPlugin2.exe
+C:\Users\NiteLite\documents\visual studio 2010\Projects\RadioControlPlugin2\RadioControlPlugin2\obj\x86\Debug\RadioControlPlugin2.pdb
+C:\Users\NiteLite\documents\visual studio 2010\Projects\RadioControlPlugin2\RadioControlPlugin2\bin\Debug\RadioControlPlugin2.exe.config
+C:\Users\NiteLite\documents\visual studio 2010\Projects\RadioControlPlugin2\RadioControlPlugin2\obj\x86\Debug\ResolveAssemblyReference.cache
+C:\Users\NiteLite\documents\visual studio 2010\Projects\RadioControlPlugin2\RadioControlPlugin2\obj\x86\Debug\RadioControlPlugin2.Form1.resources
+C:\Users\NiteLite\documents\visual studio 2010\Projects\RadioControlPlugin2\RadioControlPlugin2\obj\x86\Debug\RadioControlPlugin2.Properties.Resources.resources
+C:\Users\NiteLite\documents\visual studio 2010\Projects\RadioControlPlugin2\RadioControlPlugin2\obj\x86\Debug\ResGen.read.1.tlog
+C:\Users\NiteLite\documents\visual studio 2010\Projects\RadioControlPlugin2\RadioControlPlugin2\obj\x86\Debug\ResGen.write.1.tlog
+C:\Users\NiteLite\documents\visual studio 2010\Projects\RadioControlPlugin2\RadioControlPlugin2\bin\Debug\RadioControlPlugin2.exe
+C:\Users\NiteLite\documents\visual studio 2010\Projects\RadioControlPlugin2\RadioControlPlugin2\bin\Debug\RadioControlPlugin2.pdb
+C:\Users\NiteLite\documents\visual studio 2010\Projects\RadioControlPlugin2\RadioControlPlugin2\bin\Debug\RadioControlPlugin2.exe.manifest
+C:\Users\NiteLite\documents\visual studio 2010\Projects\RadioControlPlugin2\RadioControlPlugin2\bin\Debug\RadioControlPlugin2.application
+C:\Users\NiteLite\documents\visual studio 2010\Projects\RadioControlPlugin2\RadioControlPlugin2\obj\x86\Debug\RadioControlPlugin2.exe.manifest
+C:\Users\NiteLite\documents\visual studio 2010\Projects\RadioControlPlugin2\RadioControlPlugin2\obj\x86\Debug\RadioControlPlugin2.application
