@@ -3,3 +3,4 @@ This is some various code used to control LEDs attached by various methods.
 cube8: AVR-code for an 8x8x8 monochrome LED cube (http://www.youtube.com/watch?v=6mXM-oGggrM)
 cube_pc: PC-code for the same 8x8x8 cube, controlled via RS232 from a computer.
 LPD8806: Arduino-code for controlling LED strips from adafruit, and also pythoncode to send animations to the arduino
+TM1638: Arduino-code for controlling the 8 7-segment display from dx.com (SKU: 81873) for simulating a radio in flightsim (http://www.youtube.com/watch?v=RIvtII2oioQ)
