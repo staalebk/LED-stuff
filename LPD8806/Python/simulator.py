@@ -18,19 +18,23 @@ screen_height = led_height+led_padding*2
 
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.bind(("127.0.0.1", udp_port))
+sock.bind(("10.0.10.51", udp_port))
 
 
 surf = pygame.display.set_mode((screen_width, screen_height));
 pygame.display.set_caption('LED strip simulator')
+udp_format = ""
+for i in range(0, led_num*3):
+        udp_format = udp_format + "B"
 
 bgColor = pygame.Color(0,0,0)
-
+print "yay"
 while True:
-
+        print "waiting"
         # Get data from UDP
         data, addr = sock.recvfrom(udp_buffer_size)
-        values = unpack(udp_buffer_format,data)
+        print "got data"
+        values = unpack(udp_format,data)
 
         surf.fill(bgColor)
 
