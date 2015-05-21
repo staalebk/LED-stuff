@@ -1,0 +1,16 @@
+Pixel based:
+First pixel = 3 colors, each 12 bit.
+
+input
+1 byte x coord [0..7]
+1 byte y coord [0..7]
+2 byte RED [0..4095]  ex: 0bXXXX0123 0x456789AB
+2 byte GREEN [0..4095] 
+2 byte BLUE [0..4095]
+
+
+output
+
+0bXnn1Xnn0
+0bXnn3Xnn2
+0bXnn5Xnn4 and so on
