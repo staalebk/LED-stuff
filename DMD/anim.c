@@ -32,7 +32,7 @@ typedef struct {
 } clip_info;
 
 void read_clip_header(FILE *f, clip *c) {
-    printf("pos: %d\n", ftell(f));
+//    printf("pos: %d\n", ftell(f));
     uint8_t frame[512];
     int highframe = 0;
     c->playframes = 0;
@@ -49,24 +49,54 @@ void read_clip_header(FILE *f, clip *c) {
         c->time[i] = frame[i*2+1];
     }
     c->frames = highframe;
-    /*
-    printf("Frames: %d\nPlayframes: %d\n", c->frames, c->playframes);
+#if 0
+//    printf("Frames: %d\nPlayframes: %d\n", c->frames, c->playframes);
     for(int i = 0; i < c->playframes; i++) {
         printf("\t%d %d\n", c->frame[i], c->time[i]);
+//        printf("%d\n",c->time[i]);
     }
-    sleep(1);
-    */
+//    sleep(1);
+#endif
 }
 
-void print_frame(uint8_t *frame, uint8_t sleep){
-    printf("Frame! %d\n", sleep);
+void write_clip_info(FILE *f, clip *c, clip_info *ci) {
+    fprintf(f, "{\n\"name\": \"%s\",\n\"frames\": %d,\n\"animation\": [", ci->name, ci->frames);
+    for(int i = 0; i<c->playframes; i++) {
+        if(i) {
+            fprintf(f, ",");
+        }
+        fprintf(f, "%d", c->frame[i]);
+    }
+    fprintf(f, "],\n\"time\": [");
+    for(int i = 0; i<c->playframes; i++) {
+        if(i) {
+            fprintf(f, ",");
+        }
+        fprintf(f, "%d", c->time[i]);
+    }
+    fprintf(f, "],\n\"mystery\": [");
+    for(int i = 0; i<18; i++) {
+        if(i) {
+            fprintf(f, ",");
+        }
+        fprintf(f, "%d", ci->m[i]);
+    }
+    fprintf(f, "]\n},\n");
+}
+
+void print_frame(uint8_t *frame, uint8_t sleep, char *name){
+    printf("Frame! %dms\t%s\n", sleep, name);
     for (int col = 0; col < 32; col++) {
         for (int row = 0; row < 128; row++) {
            print_char(frame[col*128+row]);
         }
         printf("\n");
     }
-    usleep(sleep*2000);
+    if(sleep > 100) {
+        usleep((sleep)*4000);
+    } else {
+        usleep((sleep)*1500);
+    }
 }
 
 int main() {
@@ -80,6 +110,8 @@ int main() {
     fseek(in, CLIPINFO_OFFSET, SEEK_SET);
     int clip_infos = 0;
     int frames = 0;
+    FILE *out;
+    out = fopen("out.json", "w+");
     // Read clip infos
     for(;clip_infos < MAX_CLIPS; clip_infos++) {
         result = fread(buf, 1, 0x200, in);
@@ -112,6 +144,7 @@ int main() {
         clip c;
         read_clip_header(in, &c);
         printf("Frames: %d, playframes: %d %s\n", c.frames, c.playframes, clips[cl]->name);
+        write_clip_info(out, &c, clips[cl]);
         // Read
 //        for(int i = 0; i < c.frames; i++) {
         for(int i = 0; i < clips[cl]->frames; i++) {
@@ -125,16 +158,29 @@ int main() {
                 frame[i][j*2 + 1] = (frame_raw[j] & 0x0F ) >> 0;
             }
         }
-        if(strncmp("CREATURE", clips[cl]->name,8))
+//        if(strncmp("AVENG", clips[cl]->name,5)) {
+//        if(clips[cl]->m[12] != 1) {
             continue;
+//        }
         printf("id: %d\n",clips[cl]->id);
         for(int i = 0; i < c.playframes; i++) {
-            print_frame(frame[c.frame[i]-1], c.time[i]);
+            print_frame(frame[c.frame[i]-1], c.time[i], clips[cl]->name);
         }
     }
 }
 
 void print_char(int ch) {
+    // 69 characters..
+    static char ramp[] = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'. ";
+    int idx = ((15.0-ch)*4.6);
+    if(ch == 10) {
+        printf("  ");
+    } else {
+        printf("%c", ramp[idx]);
+        printf("%c", ramp[idx]);
+    }
+    return;
+   
     if(ch == 0) {
         printf("  ");
     } else if (ch == 1) {
@@ -156,7 +202,7 @@ void print_char(int ch) {
     } else if (ch == 9) {
         printf("99");
     } else if (ch == 10) {
-        printf("00");
+        printf("  "); // Transparent?
     } else if (ch == 11) {
         printf("11");
     } else if (ch == 12) {
@@ -169,6 +215,7 @@ void print_char(int ch) {
         printf("55");
     } else if (ch == 16) {
         printf("66");
+        exit(0);
     } else {
         printf("Error! %d\n");
     }
