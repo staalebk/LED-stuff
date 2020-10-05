@@ -84,6 +84,22 @@ void write_clip_info(FILE *f, clip *c, clip_info *ci) {
     fprintf(f, "]\n},\n");
 }
 
+void write_animation(FILE *f, char *name, uint8_t *frame, int frames) {
+    fprintf(f, "{\n\"name\": \"%s\",\n\"frames\":[\n", name);
+    for(int i = 0; i<frames;i++){
+        if(i)
+            fprintf(f, ",\n");
+        fprintf(f, "  [");
+        for(int j = 0; j<4096;j++){
+            if(j)
+                fprintf(f, ",");
+            fprintf(f, "%d", frame[i*4096+j]);
+        }
+        fprintf(f, "]");
+    }
+    fprintf(f, "\n]\n}\n");
+}
+
 void print_frame(uint8_t *frame, uint8_t sleep, char *name){
     printf("Frame! %dms\t%s\n", sleep, name);
     for (int col = 0; col < 32; col++) {
@@ -110,8 +126,6 @@ int main() {
     fseek(in, CLIPINFO_OFFSET, SEEK_SET);
     int clip_infos = 0;
     int frames = 0;
-    FILE *out;
-    out = fopen("out.json", "w+");
     // Read clip infos
     for(;clip_infos < MAX_CLIPS; clip_infos++) {
         result = fread(buf, 1, 0x200, in);
@@ -144,7 +158,7 @@ int main() {
         clip c;
         read_clip_header(in, &c);
         printf("Frames: %d, playframes: %d %s\n", c.frames, c.playframes, clips[cl]->name);
-        write_clip_info(out, &c, clips[cl]);
+//        write_clip_info(out, &c, clips[cl]);
         // Read
 //        for(int i = 0; i < c.frames; i++) {
         for(int i = 0; i < clips[cl]->frames; i++) {
@@ -160,11 +174,17 @@ int main() {
         }
 //        if(strncmp("AVENG", clips[cl]->name,5)) {
 //        if(clips[cl]->m[12] != 1) {
-            continue;
+//            continue;
 //        }
+        FILE *out;
+        char file[100];
+        sprintf(file, "json/%s.json", clips[cl]->name);
+        out = fopen(file, "w+");
+        write_animation(out, clips[cl]->name, frame, clips[cl]->frames);
+        fclose(out);
         printf("id: %d\n",clips[cl]->id);
         for(int i = 0; i < c.playframes; i++) {
-            print_frame(frame[c.frame[i]-1], c.time[i], clips[cl]->name);
+//            print_frame(frame[c.frame[i]-1], c.time[i], clips[cl]->name);
         }
     }
 }
