@@ -50,12 +50,12 @@ class DMD(SampleBase):
         canvas = self.matrix.CreateFrameCanvas()
         while True:
             # Select animation
-            with open('../../dmd/json/dmd.json') as dmd_list:
+            with open('json/dmd.json') as dmd_list:
                 animations = json.load(dmd_list)
                 animations = filter(lambda x: "AVENG" in x['name'], animations)
                 animation = random.choice(animations)
                 print(animation['name'])
-                animation_file = '../../dmd/json/anim/' + animation['name'] + '.json'
+                animation_file = 'json/anim/' + animation['name'] + '.json'
                 with open(animation_file) as anim_file:
                     anim = json.load(anim_file)
                     for frame_n, time_n in zip(animation['animation'], animation['time']):
