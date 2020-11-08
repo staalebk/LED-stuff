@@ -119,7 +119,7 @@ reduced = [0,0,0, # 0
       gamma(step*4),gammag(stepg*4),0] # 15
 
 #icp = reduced
-font = graphics.Font()
+#font = graphics.Font()
 #font.LoadFont("../../dmd/rpi-rgb-led-matrix/fonts/7x13.bdf")
 #font.LoadFont("../../dmd/rpi-rgb-led-matrix/fonts/10x20.bdf")
 #font.LoadFont("font/ui.bdf")
@@ -141,7 +141,7 @@ font = graphics.Font()
 #font.LoadFont("font/cloister.bdf")
 #font.LoadFont("font/sfsports.bdf")
 #font.LoadFont("font/metalord.bdf")
-font.LoadFont("font/army.bdf")
+#font.LoadFont("font/army.bdf")
 #font.LoadFont("font/raider.bdf")
 #font.LoadFont("font/bold.bdf")
 #font.LoadFont("font/life.bdf")
@@ -202,12 +202,12 @@ class Animation():
             if colors[f] != 0:
                 full = True
         if full:
-            print("Full palette")
+#            print("Full palette")
             self.palette = icp
         else:
-            print("Reduced palette")
+#            print("Reduced palette")
             self.palette = reduced
-        print(colors)
+#        print(colors)
 
     def getNextFrame(self, canvas):
         if self.isDone:
@@ -225,7 +225,7 @@ class Animation():
                 return canvas
             time_n = self.atime[self.frame]
             if time_n > 100:
-                print(time_n)
+#                print(time_n)
                 time_n = time_n * 2
             self.next_frame = time.perf_counter() + (time_n/1000)*1.5
         frame_n = self.animation[self.frame] - 1
@@ -264,13 +264,13 @@ class DMD(SampleBase):
 #        canv = self.matrix
 #        animation = random.choice(self.animations)
 #        self.a = Animation(animation['name'], animation['frames'], animation['animation'], animation['time'], animation['mystery'])
-        t = Text("font/army.bdf")
+        t = Text("font/cloister.bdf")
         canvas = self.matrix.CreateFrameCanvas()
         while True:
             clearCanvas(canvas)
             if self.state == State.IDLE:
                 if time.perf_counter() > self.nextState:
-                    self.state = random.choice([State.TEXT, State.ANIM])
+                    self.state = random.choices(population=[State.TEXT, State.ANIM], weights=[0.2,0.8])[0]
                     if self.state == State.TEXT:
                         self.nextState = time.perf_counter() + 5
                     if self.state == State.ANIM:
