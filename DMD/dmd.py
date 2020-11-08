@@ -2,6 +2,18 @@
 from samplebase import SampleBase
 from rgbmatrix import graphics
 import json, random, time, sys, math, threading, os
+from enum import Enum, auto
+
+class State(Enum):
+    IDLE = auto()
+    TEXT = auto()
+    ANIM = auto()
+    ANIM_IN = auto()
+    ANIM_OUT = auto()
+    ROLL_IN = auto()
+    ROLL_OUT = auto()
+
+
 gamma_ramp = [
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  1,  1,
@@ -242,31 +254,50 @@ class DMD(SampleBase):
     def __init__(self, *args, **kwargs):
         super(DMD, self).__init__(*args, **kwargs)
         self.ani = 0
+        self.state = State.IDLE
+        self.nextState = time.perf_counter()
+        with open('json/dmd.json') as dmd_list:
+            self.animations = json.load(dmd_list)
+#            self.animations = list(filter(lambda x: "24_" in x['name'], self.animations))
 
     def run(self):
-        cnt = 0
 #        canv = self.matrix
-        canvas = self.matrix.CreateFrameCanvas()
-        with open('json/dmd.json') as dmd_list:
-            animations = json.load(dmd_list)
-#            animations = list(filter(lambda x: "24_" in x['name'], animations))
-        animation = random.choice(animations)
-        self.a = Animation(animation['name'], animation['frames'], animation['animation'], animation['time'], animation['mystery'])
+#        animation = random.choice(self.animations)
+#        self.a = Animation(animation['name'], animation['frames'], animation['animation'], animation['time'], animation['mystery'])
         t = Text("font/army.bdf")
+        canvas = self.matrix.CreateFrameCanvas()
         while True:
-            cnt += 1
-            if self.a.isDone:
-#                animation = random.choice(animations)
-                animation = animations[self.ani]
-#                ani += 1
-                self.a = Animation(animation['name'], animation['frames'], animation['animation'], animation['time'], animation['mystery'])
-            canvas = clearCanvas(canvas) 
+            clearCanvas(canvas)
+            if self.state == State.IDLE:
+                if time.perf_counter() > self.nextState:
+                    self.state = random.choice([State.TEXT, State.ANIM])
+                    if self.state == State.TEXT:
+                        self.nextState = time.perf_counter() + 5
+                    if self.state == State.ANIM:
+                        animation = random.choice(self.animations)
+                        self.a = Animation(animation['name'], animation['frames'], animation['animation'], animation['time'], animation['mystery'])
+                    continue
+            if self.state == State.TEXT:
+                canvas = t.drawText(canvas, "TSLA $429.90", 0, 28)
+                if time.perf_counter() > self.nextState:
+                    self.state = State.IDLE
+                    self.nextState = time.perf_counter() + 0.5
+                    continue
+            if self.state == State.ANIM:
+                if self.a.isDone:
+                    self.state = State.IDLE
+                    self.nextState = time.perf_counter() + 0.5
+                    continue
+#                animation = self.animations[self.ani]
+#                self.ani += 1
+#                self.a = Animation(animation['name'], animation['frames'], animation['animation'], animation['time'], animation['mystery'])
+#            canvas = clearCanvas(canvas) 
 #            canvas = t.drawText(canvas, "TSLA $429.90", (1-easeOutCubic(time.perf_counter()%1))*128, 28)
-            canvas = t.drawText(canvas, "TSLA $429.90", 0, 28)
-            canvas = self.a.getNextFrame(canvas)
+#            canvas = t.drawText(canvas, "TSLA $429.90", 0, 28)
+                canvas = self.a.getNextFrame(canvas)
 #            canvas = testPattern(canvas)
-            if self.a.isDone:
-                continue
+#            if self.a.isDone:
+#                continue
             canvas = self.matrix.SwapOnVSync(canvas)
 
     def keypress(self, inp):
