@@ -68,10 +68,6 @@ def gammag(x):
     g = 2 # Gamma
     return int(pow(x,g) * 254 + 0.5) + 1
 
-print(gamma(0))
-print(gamma(0.5))
-print(gamma(1))
-
 step = 1.0/14
 stepg = 1.0/20
 ramp = [0,0,0, # 0
@@ -110,7 +106,7 @@ reduced = [0,0,0, # 0
       128,128,128, # 2
       gamma(step*4),gammag(stepg*4),0] # 15
 
-icp = reduced
+#icp = reduced
 font = graphics.Font()
 #font.LoadFont("../../dmd/rpi-rgb-led-matrix/fonts/7x13.bdf")
 #font.LoadFont("../../dmd/rpi-rgb-led-matrix/fonts/10x20.bdf")
@@ -179,6 +175,22 @@ class Animation():
         self.atime = atime
         self.mystery = mystery
         self.next_frame = 0
+        colors = [0] * 16
+        for frame in self.anim['frames']:
+            for pixel in frame:
+                colors[pixel] += 1
+        fullColors = [2, 4, 5, 6, 8, 9, 11, 12, 13, 14]
+        full = False
+        for f in fullColors:
+            if colors[f] != 0:
+                full = True
+        if full:
+            print("Full palette")
+            self.palette = icp
+        else:
+            print("Reduced palette")
+            self.palette = reduced
+        print(colors)
 
     def getNextFrame(self, canvas):
         if self.isDone:
@@ -206,7 +218,7 @@ class Animation():
             for y in range(0, canvas.height):
                 pixel = frame[x+y*canvas.width]
                 if pixel != 10:
-                    canvas.SetPixel(x, y, icp[pixel*3+0], icp[pixel*3+1]*0.5, icp[pixel*3+2])
+                    canvas.SetPixel(x, y, self.palette[pixel*3+0], self.palette[pixel*3+1]*0.5, self.palette[pixel*3+2])
         return canvas
 
 
@@ -216,17 +228,20 @@ class DMD(SampleBase):
 
     def run(self):
         cnt = 0
+        ani = 0
 #        canv = self.matrix
         canvas = self.matrix.CreateFrameCanvas()
         with open('json/dmd.json') as dmd_list:
             animations = json.load(dmd_list)
-#            animations = list(filter(lambda x: "JUDGE" in x['name'], animations))
+#            animations = list(filter(lambda x: "24_" in x['name'], animations))
         animation = random.choice(animations)
         a = Animation(animation['name'], animation['frames'], animation['animation'], animation['time'], animation['mystery'])
         while True:
             cnt += 1
             if a.isDone:
-                animation = random.choice(animations)
+#                animation = random.choice(animations)
+                animation = animations[ani]
+                ani += 1
                 a = Animation(animation['name'], animation['frames'], animation['animation'], animation['time'], animation['mystery'])
             canvas = clearCanvas(canvas) 
 #            canvas = drawText(canvas, "TSLA $429.90", (1-easeOutCubic(time.perf_counter()%1))*128, 28)
