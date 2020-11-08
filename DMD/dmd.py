@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from samplebase import SampleBase
 from rgbmatrix import graphics
-import json, random, time, sys, math
+import json, random, time, sys, math, threading, os
 gamma_ramp = [
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  1,  1,
@@ -155,12 +155,17 @@ def clearCanvas(canvas):
 def easeOutCubic(x):
     return 1 - pow(1 - x, 3)
 
-def drawText(canvas, text, posX, posY):
-    fontb = 1
-    graphics.DrawText(canvas, font, posX+1, posY+1, graphics.Color(icp[fontb*3],icp[fontb*3+1]*0.5,icp[fontb*3+2]), text)
-    fontb = 16
-    graphics.DrawText(canvas, font, posX, posY, graphics.Color(icp[fontb*3],icp[fontb*3+1]*0.5,icp[fontb*3+2]), text)
-    return canvas
+class Text():
+    def __init__(self, fontName):
+        self.font = graphics.Font()
+        self.font.LoadFont(fontName)
+
+    def drawText(self, canvas, text, posX, posY):
+        fontb = 1
+        graphics.DrawText(canvas, self.font, posX+1, posY+1, graphics.Color(icp[fontb*3],icp[fontb*3+1]*0.5,icp[fontb*3+2]), text)
+        fontb = 16
+        graphics.DrawText(canvas, self.font, posX, posY, graphics.Color(icp[fontb*3],icp[fontb*3+1]*0.5,icp[fontb*3+2]), text)
+        return canvas
         
 
 class Animation():
@@ -179,7 +184,7 @@ class Animation():
         for frame in self.anim['frames']:
             for pixel in frame:
                 colors[pixel] += 1
-        fullColors = [2, 4, 5, 6, 8, 9, 11, 12, 13, 14]
+        fullColors = [2, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14]
         full = False
         for f in fullColors:
             if colors[f] != 0:
@@ -221,38 +226,64 @@ class Animation():
                     canvas.SetPixel(x, y, self.palette[pixel*3+0], self.palette[pixel*3+1]*0.5, self.palette[pixel*3+2])
         return canvas
 
+class KeyboardThread(threading.Thread):
+
+    def __init__(self, input_cbk = None, name='keyboard-input-thread'):
+        self.input_cbk = input_cbk
+        super(KeyboardThread, self).__init__(name=name)
+        self.start()
+
+    def run(self):
+        while True:
+            self.input_cbk(input()) #waits to get input + Return
+
 
 class DMD(SampleBase):
     def __init__(self, *args, **kwargs):
         super(DMD, self).__init__(*args, **kwargs)
+        self.ani = 0
 
     def run(self):
         cnt = 0
-        ani = 0
 #        canv = self.matrix
         canvas = self.matrix.CreateFrameCanvas()
         with open('json/dmd.json') as dmd_list:
             animations = json.load(dmd_list)
 #            animations = list(filter(lambda x: "24_" in x['name'], animations))
         animation = random.choice(animations)
-        a = Animation(animation['name'], animation['frames'], animation['animation'], animation['time'], animation['mystery'])
+        self.a = Animation(animation['name'], animation['frames'], animation['animation'], animation['time'], animation['mystery'])
+        t = Text("font/army.bdf")
         while True:
             cnt += 1
-            if a.isDone:
+            if self.a.isDone:
 #                animation = random.choice(animations)
-                animation = animations[ani]
-                ani += 1
-                a = Animation(animation['name'], animation['frames'], animation['animation'], animation['time'], animation['mystery'])
+                animation = animations[self.ani]
+#                ani += 1
+                self.a = Animation(animation['name'], animation['frames'], animation['animation'], animation['time'], animation['mystery'])
             canvas = clearCanvas(canvas) 
-#            canvas = drawText(canvas, "TSLA $429.90", (1-easeOutCubic(time.perf_counter()%1))*128, 28)
-            canvas = a.getNextFrame(canvas)
+#            canvas = t.drawText(canvas, "TSLA $429.90", (1-easeOutCubic(time.perf_counter()%1))*128, 28)
+            canvas = t.drawText(canvas, "TSLA $429.90", 0, 28)
+            canvas = self.a.getNextFrame(canvas)
 #            canvas = testPattern(canvas)
-            if a.isDone:
+            if self.a.isDone:
                 continue
             canvas = self.matrix.SwapOnVSync(canvas)
 
+    def keypress(self, inp):
+        if inp == 'x':
+            os._exit(0)
+        elif inp == '':
+            self.ani += 1
+            self.a.isDone = True
+        elif inp == 'f':
+            print("Change font!")
+        print('input! ', inp, ' ', self.ani)
+
+
+
 # Main function
 if __name__ == "__main__":
-    simple_square = DMD()
-    if (not simple_square.process()):
-        simple_square.print_help()
+    dmd = DMD()
+    kthread = KeyboardThread(dmd.keypress)
+    if (not dmd.process()):
+        dmd.print_help()
