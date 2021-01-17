@@ -4,6 +4,9 @@ from rgbmatrix import graphics
 import json, random, time, sys, math, threading, os
 from enum import Enum, auto
 
+FIXEDFONT = '../../dmd/rpi-rgb-led-matrix/fonts/'
+FIXEDFONT = 'fixedfonts/'
+
 class State(Enum):
     IDLE = auto()
     TEXT = auto()
@@ -12,7 +15,22 @@ class State(Enum):
     ANIM_OUT = auto()
     ROLL_IN = auto()
     ROLL_OUT = auto()
+    SPACEX_LAUNCH = auto()
 
+class Topic(Enum):
+    TSLA = auto()
+    TEMP = auto()
+    USD = auto()
+    BTC = auto()
+    CLOCK = auto()
+    SPACEX = auto()
+
+data = {}
+data['temp'] = -666
+data['humidity'] = -1
+data['rain'] = -1
+data['rainday'] = -1
+data['pressure'] = -1
 
 gamma_ramp = [
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
@@ -118,6 +136,22 @@ reduced = [0,0,0, # 0
       128,128,128, # 2
       gamma(step*4),gammag(stepg*4),0] # 15
 
+fonts = []
+for root, dirnames, filenames in os.walk('font/bdf'):
+    for f in filenames:
+        if ".bdf" in f:
+            base = f.split(".")[0]
+            font = base.split("_")[:-1]
+            font = "_".join(font)
+            if font not in fonts:
+                fonts.append(font)
+lfonts = []
+for root, dirnames, filenames in os.walk(FIXEDFONT):
+    for f in filenames:
+        if ".bdf" in f:
+            lfonts.append(f)
+
+print(lfonts)
 #icp = reduced
 #font = graphics.Font()
 #font.LoadFont("../../dmd/rpi-rgb-led-matrix/fonts/7x13.bdf")
@@ -148,7 +182,7 @@ reduced = [0,0,0, # 0
 #font.LoadFont("font/transformers.bdf")
 #font.LoadFont("font/alba.bdf")
 for x in range(0, 16):
-    print(str(x) + ":\t" + str(icp[x*3]) + "\t" + str(icp[x*3+1]))
+    print(str(x) + ":\t" + str(ramp[x*3]) + "\t" + str(ramp[x*3+1]))
 
 def testPattern(canvas, t = 0):
     for x in range(0, canvas.width):
@@ -168,16 +202,90 @@ def easeOutCubic(x):
     return 1 - pow(1 - x, 3)
 
 class Text():
-    def __init__(self, fontName):
+    def __init__(self, fontName = "CollegiateBlackFLF", fontSize = "15", topic = Topic.CLOCK):
+        print("Creating text about " + str(topic))
         self.font = graphics.Font()
-        self.font.LoadFont(fontName)
+        self.fontHalf = graphics.Font()
+        self.fontFull = graphics.Font()
+        self.fontSize = fontSize
+        self.fontName = fontName
+        self.font.LoadFont("font/bdf/" + self.fontName + "_" + self.fontSize + ".bdf")
+        self.fontHalf.LoadFont("font/bdf/" + self.fontName + "_18.bdf")
+        self.fontFull.LoadFont("font/bdf/" + self.fontName + "_34.bdf")
+        self.topic = topic
+        self.shadow = True
 
-    def drawText(self, canvas, text, posX, posY):
-        fontb = 1
-        graphics.DrawText(canvas, self.font, posX+1, posY+1, graphics.Color(icp[fontb*3],icp[fontb*3+1]*0.5,icp[fontb*3+2]), text)
+    def drawText(self, canvas, text, posX = 0, posY = 31, center = True, full = False, half = False):
+        font = self.font
+        if full:
+            font = self.fontFull
+        if half:
+            font = self.fontHalf
+        if center:
+            fontb = 0
+            width = graphics.DrawText(canvas, font, 128, 128, graphics.Color(icp[fontb*3],icp[fontb*3+1]*0.5,icp[fontb*3+2]), text)
+            posX = 128/2 - width/2
+#            posy = 32/2
+#            canvas.setTextAnchor("center")
+        if self.shadow:
+            fontb = 1
+            graphics.DrawText(canvas, font, posX+1, posY+1, graphics.Color(icp[fontb*3],icp[fontb*3+1]*0.5,icp[fontb*3+2]), text)
         fontb = 16
-        graphics.DrawText(canvas, self.font, posX, posY, graphics.Color(icp[fontb*3],icp[fontb*3+1]*0.5,icp[fontb*3+2]), text)
+        graphics.DrawText(canvas, font, posX, posY, graphics.Color(icp[fontb*3],icp[fontb*3+1]*0.5,icp[fontb*3+2]), text)
         return canvas
+
+    def draw(self, canvas):
+#        self.topic = Topic.TEMP
+        if self.topic == Topic.TSLA:
+            canvas = self.drawText(canvas, "TSLA:", 0, 15, half = True)
+            canvas = self.drawText(canvas, "{}".format(data['TSLA']), 0, 31, half = True)
+        if self.topic == Topic.CLOCK:
+#            text = time.strftime("%H:%M:%S")
+            t = time.time()
+            if (t%1) > 0.5:
+                text = time.strftime("%H %M")
+            else:
+                text = time.strftime("%H:%M")
+            canvas = self.drawText(canvas, text, 0, 28, full = True)
+        if self.topic == Topic.TEMP:
+            canvas = self.drawText(canvas, "{:.1f} C".format(data['temp']), 0, 28, full = True)
+        if self.topic == Topic.SPACEX:
+            launch = data['spacex_launch']['date_unix']
+            remain = launch - time.time()
+            hours = int(remain/3600)
+            minutes = int((remain - (hours*3600))/60)
+            seconds = int(remain - (hours*3600) - (minutes*60))
+
+            canvas = self.drawText(canvas, "T-{:02d}:{:02d}:{:02d}".format(hours, minutes, seconds), 0, 28, half = True, center = False)
+        if self.topic == Topic.USD:
+            canvas = self.drawText(canvas, "USD:", 0, 15, half = True)
+            canvas = self.drawText(canvas, "9.458 NOK", 0, 31, half = True)
+        if self.topic == Topic.BTC:
+            canvas = self.drawText(canvas, "BTC:", 0, 15, half = True)
+            canvas = self.drawText(canvas, "14123.40 USD", 0, 31, half = True)
+        return canvas
+
+    def setTopic(self, topic):
+        self.topic = topic
+
+    def changeFont(self):
+        self.font = graphics.Font()
+        #self.fontName = random.choice(fonts)
+        #print("New font is: " + self.fontName + " size: " + self.fontSize)
+        #self.font.LoadFont("font/bdf/" + self.fontName + "_" + self.fontSize + ".bdf")
+        self.fontName = random.choice(lfonts)
+        print("New font is: " + self.fontName)
+        self.font.LoadFont(FIXEDFONT + self.fontName)
+
+    def setFontSize(self, fontSize):
+        self.fontSize = fontSize
+        self.font.LoadFont("font/bdf/" + self.fontName + "_" + self.fontSize + ".bdf")
+
+    def toggleShadow(self):
+        if self.shadow:
+            self.shadow = False
+        else:
+            self.shadow = True
         
 
 class Animation():
@@ -215,7 +323,7 @@ class Animation():
         if self.next_frame == 0:
             time_n = self.atime[0]
             if time_n > 100:
-                print(time_n)
+#                print(time_n)
                 time_n = time_n * 5
             self.next_frame = time.perf_counter() + (time_n/1000)*1.5
         if time.perf_counter() > self.next_frame:
@@ -264,24 +372,58 @@ class DMD(SampleBase):
 #        canv = self.matrix
 #        animation = random.choice(self.animations)
 #        self.a = Animation(animation['name'], animation['frames'], animation['animation'], animation['time'], animation['mystery'])
-        t = Text("font/cloister.bdf")
+        self.t = Text()
         canvas = self.matrix.CreateFrameCanvas()
         while True:
             clearCanvas(canvas)
             if self.state == State.IDLE:
                 if time.perf_counter() > self.nextState:
-                    self.state = random.choices(population=[State.TEXT, State.ANIM], weights=[0.2,0.8])[0]
+                    global data
+                    with open('data.json') as infile:
+                        data = json.load(infile)
+                    if data['spacex_launch']['date_unix'] < (time.time() + 4500) and (data['spacex_launch']['date_unix'] + 60) > time.time() :
+                        self.state = State.SPACEX_LAUNCH
+                    else:
+                        self.state = random.choices(population=[State.TEXT, State.ANIM], weights=[1.5,0.5])[0]
+#                    self.state = State.TEXT
                     if self.state == State.TEXT:
                         self.nextState = time.perf_counter() + 5
+                        topic = random.choices(population=[Topic.TSLA, Topic.TEMP, Topic.USD, Topic.BTC, Topic.CLOCK], weights=[0.60,0.10,0.0,0.0,0.60])[0]
+                        self.t.setTopic(topic)
                     if self.state == State.ANIM:
                         animation = random.choice(self.animations)
                         self.a = Animation(animation['name'], animation['frames'], animation['animation'], animation['time'], animation['mystery'])
+                    if self.state == State.SPACEX_LAUNCH:
+                        self.nextState = time.perf_counter() + data['spacex_launch']['date_unix'] - time.time()
+                        self.t.setTopic(Topic.SPACEX)
                     continue
             if self.state == State.TEXT:
-                canvas = t.drawText(canvas, "TSLA $429.90", 0, 28)
+#                canvas = t.drawText(canvas, "TSLA $429.90", 0, 28)
+                canvas = self.t.draw(canvas)
                 if time.perf_counter() > self.nextState:
                     self.state = State.IDLE
                     self.nextState = time.perf_counter() + 0.5
+                    continue
+            if self.state == State.SPACEX_LAUNCH:
+#                canvas = t.drawText(canvas, "TSLA $429.90", 0, 28)
+                canvas = self.t.draw(canvas)
+                if time.perf_counter() > self.nextState + 3:
+                    self.state = State.ANIM
+                    animation = random.choice(self.animations)
+                    for ani in self.animations:
+                        if ani['name'] == "24_007":
+                                animation = ani
+                                break
+                    self.a = Animation(animation['name'], animation['frames'], animation['animation'], animation['time'], animation['mystery'])
+                    continue
+                elif time.perf_counter() > self.nextState:
+                    self.state = State.ANIM
+                    animation = random.choice(self.animations)
+                    for ani in self.animations:
+                        if ani['name'] == "24_006":
+                                animation = ani
+                                break
+                    self.a = Animation(animation['name'], animation['frames'], animation['animation'], animation['time'], animation['mystery'])
                     continue
             if self.state == State.ANIM:
                 if self.a.isDone:
@@ -304,11 +446,17 @@ class DMD(SampleBase):
         if inp == 'x':
             os._exit(0)
         elif inp == '':
-            self.ani += 1
+#            self.ani += 1
             self.a.isDone = True
         elif inp == 'f':
             print("Change font!")
-        print('input! ', inp, ' ', self.ani)
+            self.t.changeFont()
+        elif inp == 's':
+            print("Change shadow!")
+            self.t.toggleShadow()
+        elif inp.isnumeric():
+            print("Change fontsize!")
+            self.t.setFontSize(inp)
 
 
 
