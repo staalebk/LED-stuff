@@ -52,13 +52,12 @@ def print_num(font, num):
         print(row)
 
 if __name__ == "__main__":
-    c = Clock(False, "")
+    c = Clock(seconds = False, font_name = "")
     d = Display()
+    print(c.font)
     while True:
         canvas = c.getTime()
         d.display(canvas)
-        print(c.font)
-        time.sleep(0.1)
     
 #for font in fonts.fonts:
 #    print(font)
