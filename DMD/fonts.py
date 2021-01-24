@@ -5,6 +5,8 @@ FONT_WIDTH = 14
 FONT_HEIGHT = 18
 
 fonts = {}
+spaces = {}
+ranges = {}
 fonts['walking_dead'] = [
 "000000555400000000553333440000053333333340005333222333330053320002233205333203300332053320000333220433203000432243320000000432433202000004304332020000432043320200004320033322000043200333220000430002333200004200002332400432000002233443200000000222200000",
 "000000554000000400553334000000053333330000000533333200000043304332000000430043200000000000432000000000004320000000000043200000000300432000000003304320000000003043200000000300430000000000004200000000300032000000000000320000000000000200000000000000000000",
@@ -282,6 +284,55 @@ fonts['stern'] = [
 "000000000000000055555555550005555555555550055555555555500555555555555005555000055550055550000555500555555555555005555555555550055555555555500055555555555000000000055550000000000555500555500005555005555555555550055555555555500055555555550000000000000000",
 "000000000000000000000000000000000000000000000005555500000000055555000000000555550000000005555500000000000000000000000000000000000000000000000000000000000000000555550000000005555500000000055555000000000555550000000000000000000000000000000000000000000000"]
 
+spaces['walking_dead'] = 1
+spaces['monster_bash'] = 1
+spaces['metallica'] = -1
+spaces['acdc'] = -1
+spaces['twilight_zone'] = 1
+spaces['addams_family'] = 1
+spaces['spiderman'] = 0
+spaces['tron'] = 0
+spaces['theater_of_magic'] = 0
+spaces['star_trek'] = 0
+spaces['circus_voltaire'] = 1
+spaces['ghostbusters'] = 0
+spaces['kiss'] = 0
+spaces['xmen'] = 0
+spaces['indiana_jones'] = -2
+spaces['24'] = 0
+spaces['dr_who'] = 1
+spaces['flintstones'] = 1
+spaces['avengers'] = -1
+spaces['potc1'] = -1
+spaces['potc2'] = -1
+spaces['mustang'] = -1
+spaces['stern'] = -1
+
+ranges['walking_dead'] = 5
+ranges['monster_bash'] = 5
+ranges['metallica'] = 5
+ranges['acdc'] = 5
+ranges['twilight_zone'] = 5
+ranges['addams_family'] = 5
+ranges['spiderman'] = 5
+ranges['tron'] = 5
+ranges['theater_of_magic'] = 5
+ranges['star_trek'] = 5
+ranges['circus_voltaire'] = 5
+ranges['ghostbusters'] = 5
+ranges['kiss'] = 5
+ranges['xmen'] = 5
+ranges['indiana_jones'] = 5
+ranges['24'] = 5
+ranges['dr_who'] = 5
+ranges['flintstones'] = 5
+ranges['avengers'] = 5
+ranges['potc1'] = 5
+ranges['potc2'] = 5
+ranges['mustang'] = 6
+ranges['stern'] = 5
+
+
 def get_idx_char(char):
     if char.isnumeric():
         return int(char[0])
@@ -293,7 +344,8 @@ def get_idx_char(char):
 
 
 def draw_text_center(font_name, text, x = 128, y = 32):
-    space = 1
+    space = spaces[font_name]
+    multi = int(16/ranges[font_name])
     canvas = array.array('B', [0] * x * y)
     length = len(text[:8])
     cursor_x = int((x - (length * (FONT_WIDTH + space)))/2)
@@ -305,6 +357,6 @@ def draw_text_center(font_name, text, x = 128, y = 32):
                 for j in range(0,14):
                     pf = i*14 + j
                     pc = ((cursor_y+i)*x) + cursor_x + j
-                    canvas[pc] = int(fonts[font_name][idx][pf])*31
+                    canvas[pc] += int(fonts[font_name][idx][pf])*multi
         cursor_x += FONT_WIDTH + space
     return canvas
