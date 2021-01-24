@@ -305,6 +305,6 @@ def draw_text_center(font_name, text, x = 128, y = 32):
                 for j in range(0,14):
                     pf = i*14 + j
                     pc = ((cursor_y+i)*x) + cursor_x + j
-                    canvas[pc] = int(fonts[font_name][idx][pf])*5
+                    canvas[pc] = int(fonts[font_name][idx][pf])*31
         cursor_x += FONT_WIDTH + space
     return canvas
