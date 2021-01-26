@@ -24,6 +24,16 @@ class Display(SampleBase):
         pos = int((val/255) * len(self.ascii_ramp_rev))
         return self.ascii_ramp_rev[pos]
 
+    def displayRGB(self, canvas):
+        self.clearCanvas()
+        for x in range(0, self.height):
+            for y in range(0, self.width):
+                valR = canvas[(x*self.width+y)*3+0]
+                valG = canvas[(x*self.width+y)*3+1]
+                valB = canvas[(x*self.width+y)*3+2]
+                self.canvas.SetPixel(y, x, valR, valG, valB)
+        self.canvas = self.matrix.SwapOnVSync(self.canvas)
+
     def display(self, canvas):
         self.clearCanvas()
         for x in range(0, self.height):
