@@ -14,6 +14,7 @@ from PIL import Image
 import os
 import time
 import array
+import random
 import os
 from display import Display
 
@@ -77,6 +78,7 @@ def processImage(path):
                 new_frame.paste(last_frame)
             
             new_frame.paste(im, (0,0), im.convert('RGBA'))
+            new_frame.duration = im.info['duration']
             frames.append(new_frame)
 
             i += 1
@@ -90,7 +92,10 @@ def processImage(path):
 def main():
     d = Display()
     while True:
-        for file in os.listdir("gifs/gif/"):
+#        for file in os.listdir("gifs/gif/"):
+        files = os.listdir("gifs/gif/")
+        while True:
+            file = random.choice(files)
 #        for file in os.listdir("."):
             filename = os.fsdecode(file)
             if filename.endswith(".gif"):# and "mario" in filename:
@@ -110,6 +115,11 @@ def main():
                             except:
                                 pass
                     d.displayRGB(canvas)
+                    duration = (frame.duration/1000)-0.02
+                    if duration < 0:
+                        duration = 0
+#                    print(int(duration*1000))
+                    time.sleep(duration)
 
 
     
